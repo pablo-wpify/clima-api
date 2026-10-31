@@ -290,7 +290,7 @@ Cada escenario de las specs tiene un nivel de verificación:
 | V6 | development-environment: Archivos de versión coherentes | Inspección | 3.1 |
 | V7 | development-environment: Dependencias atadas a la versión declarada | Inspección | 3.1 |
 | V8 | development-environment: Ruby distinto del declarado | Local | 3.2 |
-| V9 | development-environment: Recorrido desde un clon limpio | Local sobre el árbol de trabajo; Clon limpio: Pendiente (clon limpio) | 9.1; Seguimiento |
+| V9 | development-environment: Recorrido desde un clon limpio | Local sobre el árbol de trabajo; Clon limpio: Comprobado (clon limpio, ver registro) | 9.1; Seguimiento |
 | V10 | development-environment: Comando de pruebas documentado | Local | 9.1 |
 | V11 | development-environment: Suite en verde | Local | 10.1 |
 | V12 | development-environment: Un fallo se detecta | Local | 10.2 |
@@ -299,13 +299,13 @@ Cada escenario de las specs tiene un nivel de verificación:
 | V15 | service-objects: Reenvío de argumentos keyword | Local | 6.2 |
 | V16 | service-objects: Retorno del resultado de la instancia | Local | 6.2 |
 | V17 | continuous-integration: Disparadores declarados | Inspección | 8.2 |
-| V18 | continuous-integration: Push a main | Remota: Pendiente (remota) | Seguimiento |
-| V19 | continuous-integration: Pull request | Remota: Pendiente (remota) | Seguimiento |
+| V18 | continuous-integration: Push a main | Remota: Comprobado (remota, ver registro) | Seguimiento |
+| V19 | continuous-integration: Pull request | Remota: Comprobado (remota, ver registro) | Seguimiento |
 | V20 | continuous-integration: Mismo comando que en local | Inspección | 8.2 |
-| V21 | continuous-integration: Versión de Ruby del workflow | Inspección; resolución real de 4.0.9 en GitHub: Pendiente (remota) | 8.2; Seguimiento |
-| V22 | continuous-integration: Suite con fallos | Remota: Pendiente (remota); equivalente local en V12 | Seguimiento |
+| V21 | continuous-integration: Versión de Ruby del workflow | Inspección; resolución real de 4.0.9 en GitHub: Comprobado (remota, ver registro) | 8.2; Seguimiento |
+| V22 | continuous-integration: Suite con fallos | Remota: Comprobado (remota, ver registro); equivalente local en V12 | Seguimiento |
 | V23 | continuous-integration: Diferencias solo de presentación | Inspección | 7.1, 8.2 |
-| V24 | continuous-integration: Hallazgo bloqueante | Remota: Pendiente (remota); los análisis locales terminan con código 0 en 7.2 | Seguimiento |
+| V24 | continuous-integration: Hallazgo bloqueante | Remota: Comprobado (remota, ver registro); los análisis locales terminan con código 0 en 7.2 | Seguimiento |
 | V25 | continuous-integration: Verificación local completa | Local | 8.1 |
 
 ### D12. Cierre de la implementación y archivo del cambio
@@ -401,7 +401,7 @@ Esta sección se completa durante la implementación. Es la única parte de este
 | V15 | Comprobado (local) | Mismo spec, ejemplo de keyword | 2026-10-31 |
 | V16 | Comprobado (local) | Mismo spec, retorno por identidad (`equal`) | 2026-10-31 |
 | V17 | Comprobado (inspección) | `ci.yml`: `pull_request` y `push` a `main` (`8.2-ci-inspection.txt`) | 2026-10-31 |
-| V18 | Pendiente (remota) | Remoto `pablo-wpify/clima-api` configurado. `main` (`54f471b`) todavía no contiene el workflow, así que ningún push a `main` lo ejecutó; queda pendiente del merge del PR #1 | 2026-10-31 (estado registrado, sin ejecución) |
+| V18 | Comprobado (remota) | Merge del PR #1 con `--merge` (merge commit `04c57c6`, 2026-10-31 14:25:20 UTC; https://github.com/pablo-wpify/clima-api/pull/1). El push resultante a `main` disparó el run 41210054592 (https://github.com/pablo-wpify/clima-api/actions/runs/41210054592): evento `push`, rama `main`, SHA `04c57c6`; `scan_ruby`, `lint` y `test` en `success`. Los tres jobs instalaron Ruby 4.0.9 desde `.ruby-version`; Brakeman 0 advertencias; bundler-audit sin vulnerabilidades (base `542ff6e`); RSpec 5 ejemplos, 0 fallos. Antes del merge, `main` (`54f471b`) no contenía el workflow (log y resumen en `/home/pablo/clima-api-evidencias/github.R4Ufr39U/`) | 2026-10-31 |
 | V19 | Comprobado (remota) | PR #1 `add-rails-api-base` → `main` (https://github.com/pablo-wpify/clima-api/pull/1). Run 41208887614, evento `pull_request`, SHA `1b36b7e`: `scan_ruby`, `lint` y `test` en `success`; RSpec 5 ejemplos, 0 fallos; Brakeman 0 advertencias; bundler-audit sin vulnerabilidades (base `542ff6e`) (https://github.com/pablo-wpify/clima-api/actions/runs/41208887614; log `pr1-run-41208887614.log` en `/home/pablo/clima-api-evidencias/github.R4Ufr39U/`) | 2026-10-31 |
 | V20 | Comprobado (inspección) | `run` del job `test`, README y `config/ci.rb`: `bundle exec rspec` en los tres (`8.2-ci-inspection.txt`) | 2026-10-31 |
 | V21 | Inspección: Comprobado, ningún `setup-ruby` declara `ruby-version` (`grep` código 1) · GitHub: Comprobado (remota). En el run 41208887614, los tres jobs registran `Using 4.0.9 as input from file .ruby-version` e instalan `ruby 4.0.9 (2026-10-23 revision 3e93b23afc) +PRISM [x86_64-linux]` con `ruby/setup-ruby@v1` (SHA `de492cf`) en `ubuntu-24.04` | `8.2-ci-inspection.txt`; `pr1-run-41208887614.log` | 2026-10-31 |
