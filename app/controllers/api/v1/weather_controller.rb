@@ -1,7 +1,8 @@
 module Api
   module V1
-    # Translates HTTP into a CurrentWeatherFetcher call and back. Only reads the
-    # latitude and longitude query parameters; anything else is ignored.
+    # Translates HTTP into a CurrentWeatherFetcher call and its
+    # CurrentWeatherResult back into HTTP. Only reads the latitude and longitude
+    # query parameters; anything else is ignored.
     class WeatherController < ApplicationController
       SOURCE = {
         provider: "Open-Meteo",
@@ -12,22 +13,25 @@ module Api
         license_url: "https://creativecommons.org/licenses/by/4.0/"
       }.freeze
 
-      PROVIDER_ERRORS = {
-        OpenMeteo::Error::Timeout => [ :gateway_timeout, "provider_timeout" ],
-        OpenMeteo::Error::RateLimited => [ :service_unavailable, "provider_rate_limited" ],
-        OpenMeteo::Error::Unavailable => [ :bad_gateway, "provider_unavailable" ],
-        OpenMeteo::Error::HttpError => [ :bad_gateway, "provider_error" ],
-        OpenMeteo::Error::InvalidResponse => [ :bad_gateway, "provider_invalid_response" ]
+      STATUS_BY_CODE = {
+        "provider_timeout" => :gateway_timeout,
+        "provider_rate_limited" => :service_unavailable,
+        "provider_unavailable" => :bad_gateway,
+        "provider_error" => :bad_gateway,
+        "provider_invalid_response" => :bad_gateway
       }.freeze
 
       rescue_from Coordinates::Invalid, with: :render_invalid_coordinates
-      rescue_from OpenMeteo::Error, with: :render_provider_error
 
       def show
         coordinates = Coordinates.parse(latitude: params[:latitude], longitude: params[:longitude])
-        weather = CurrentWeatherFetcher.call(coordinates: coordinates)
+        result = CurrentWeatherFetcher.call(coordinates: coordinates)
 
-        render json: weather_json(weather)
+        if result.success?
+          render json: weather_json(result.data)
+        else
+          render_provider_failure(result)
+        end
       end
 
       private
@@ -49,9 +53,9 @@ module Api
         }
       end
 
-      def render_provider_error(error)
-        status, code = PROVIDER_ERRORS.fetch(error.class)
-        render status: status, json: { error: { code: code, message: error.message } }
+      def render_provider_failure(result)
+        render status: STATUS_BY_CODE.fetch(result.error_code),
+          json: { error: { code: result.error_code, message: result.error_message } }
       end
     end
   end

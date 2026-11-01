@@ -23,6 +23,8 @@ gem "bootsnap", require: false
 
 # HTTP client for the weather provider [https://github.com/lostisland/faraday]
 gem "faraday", "~> 2.15"
+# Alternative HTTP transport for the weather provider; builds the native llhttp parser [https://github.com/httprb/http]
+gem "http", "~> 6.0", ">= 6.0.4"
 
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem

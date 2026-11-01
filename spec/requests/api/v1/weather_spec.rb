@@ -1,7 +1,9 @@
 require "rails_helper"
 require "net/http"
 
-RSpec.describe "GET /api/v1/weather", type: :request do
+# The public HTTP contract. Its expectations are the same for every transport;
+# only the way each transport's failures are simulated changes (`simulate`).
+RSpec.shared_examples "the weather endpoint contract" do
   let(:provider_url) { "https://api.open-meteo.com/v1/forecast" }
   let(:provider_query) do
     {
@@ -135,7 +137,7 @@ RSpec.describe "GET /api/v1/weather", type: :request do
 
   describe "provider failures" do
     it "returns 504 on a read timeout" do
-      stub_request(:get, provider_url).with(query: provider_query).to_raise(Net::ReadTimeout)
+      stub_request(:get, provider_url).with(query: provider_query).to_raise(simulate.fetch(:read_timeout))
 
       get "/api/v1/weather", params: valid_params
 
@@ -143,7 +145,7 @@ RSpec.describe "GET /api/v1/weather", type: :request do
     end
 
     it "returns 504 on a connection timeout" do
-      stub_request(:get, provider_url).with(query: provider_query).to_raise(Net::OpenTimeout)
+      stub_request(:get, provider_url).with(query: provider_query).to_raise(simulate.fetch(:connect_timeout))
 
       get "/api/v1/weather", params: valid_params
 
@@ -159,7 +161,7 @@ RSpec.describe "GET /api/v1/weather", type: :request do
     end
 
     it "returns 502 provider_unavailable on a failed connection, without the exception message" do
-      stub_request(:get, provider_url).with(query: provider_query).to_raise(Errno::ECONNREFUSED.new("secret socket detail"))
+      stub_request(:get, provider_url).with(query: provider_query).to_raise(simulate.fetch(:refused))
 
       get "/api/v1/weather", params: valid_params
 
@@ -214,5 +216,54 @@ RSpec.describe "GET /api/v1/weather", type: :request do
       expect_error(502, "provider_invalid_response")
       expect(json.keys).to eq([ "error" ])
     end
+  end
+end
+
+RSpec.describe "GET /api/v1/weather", type: :request do
+  before { allow(OpenMeteo::Client).to receive(:default_transport).and_return(transport) }
+
+  context "with the Faraday transport" do
+    let(:transport) { HttpTransport::FaradayTransport.new(open_timeout: 2, read_timeout: 5) }
+    # Raised inside Net::HTTP, below faraday-net_http.
+    let(:simulate) do
+      {
+        read_timeout: Net::ReadTimeout,
+        connect_timeout: Net::OpenTimeout,
+        refused: Errno::ECONNREFUSED.new("secret socket detail")
+      }
+    end
+
+    it_behaves_like "the weather endpoint contract"
+  end
+
+  context "with the HTTP.rb transport" do
+    let(:transport) { HttpTransport::HttpRbTransport.new(open_timeout: 2, read_timeout: 5) }
+    # Raised above HTTP.rb's own translation: only the adapter mapping is exercised.
+    let(:simulate) do
+      {
+        read_timeout: HTTP::TimeoutError,
+        connect_timeout: HTTP::ConnectTimeoutError,
+        refused: HTTP::ConnectionError.new("failed to connect: Errno::ECONNREFUSED secret socket detail")
+      }
+    end
+
+    it_behaves_like "the weather endpoint contract"
+  end
+end
+
+RSpec.describe "Transport selection for GET /api/v1/weather", type: :request do
+  it "ignores a transport parameter and keeps the default transport" do
+    stub_request(:get, "https://api.open-meteo.com/v1/forecast").with(query: hash_including("latitude" => "-37.32"))
+      .to_return(status: 200, body: {
+        "latitude" => -37.2935, "longitude" => -59.08487, "utc_offset_seconds" => 0,
+        "current_units" => { "time" => "iso8601", "temperature_2m" => "°C", "wind_speed_10m" => "km/h" },
+        "current" => { "time" => "2026-10-31T15:00", "temperature_2m" => 17.6, "wind_speed_10m" => 8.8 }
+      }.to_json)
+    expect(HttpTransport::HttpRbTransport).not_to receive(:new)
+    expect(HttpTransport::FaradayTransport).to receive(:new).and_call_original
+
+    get "/api/v1/weather", params: { latitude: "-37.32", longitude: "-59.13", transport: "http_rb" }
+
+    expect(response).to have_http_status(200)
   end
 end
