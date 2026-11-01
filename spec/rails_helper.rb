@@ -59,6 +59,10 @@ RSpec.configure do |config|
 
   # Filter lines from Rails gems in backtraces.
   config.filter_rails_from_backtrace!
+
+  # The loopback group (spec/loopback) opens real sockets on 127.0.0.1 and is
+  # excluded by default. Run it with: bundle exec rspec --tag loopback spec/loopback
+  config.filter_run_excluding loopback: true
   # arbitrary gems may also be filtered via:
   # config.filter_gems_from_backtrace("gem name")
 end

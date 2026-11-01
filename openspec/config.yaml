@@ -5,7 +5,7 @@ context: |
   Los identificadores de código (clases, métodos, variables, archivos, rutas) siguen las convenciones habituales de Ruby y Rails, en inglés.
   Clima API es una API Rails educativa que consultará Open-Meteo a partir de coordenadas y devolverá temperatura y viento con unidades explícitas.
   Versiones seleccionadas: Ruby 4.0.9, Rails 8.1.4 y Node 24.8.0 (fijadas con asdf en .tool-versions).
-  Stack: RSpec para tests, Faraday para HTTP, service objects invocados con ApplicationService.call y objetos Data de Ruby para los resultados.
+  Stack: RSpec para tests; transporte HTTP intercambiable con Faraday como predeterminado y HTTP.rb como alternativo; service objects invocados con ApplicationService.call y objetos Data de Ruby para los resultados.
   Primer corte sin base de datos, sin autenticación propia, sin caché y sin reintentos.
   La implementación debe preservar los archivos existentes de openspec/ y .claude/; no sobrescribirlos ni regenerarlos.
 

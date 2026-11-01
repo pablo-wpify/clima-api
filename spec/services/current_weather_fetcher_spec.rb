@@ -19,13 +19,30 @@ RSpec.describe CurrentWeatherFetcher do
     described_class.call(coordinates: coordinates, client: client)
   end
 
-  def expect_invalid(payload)
-    expect { fetch(payload) }.to raise_error(OpenMeteo::Error::InvalidResponse)
+  def fetch_raising(error)
+    client = instance_double(OpenMeteo::Client)
+    allow(client).to receive(:current).and_raise(error)
+    described_class.call(coordinates: coordinates, client: client)
   end
 
-  it "builds CurrentWeather with requested and model coordinates and valid_at in UTC" do
-    weather = fetch(valid_payload)
+  def expect_failure(result, code, message)
+    expect(result).to be_a(CurrentWeatherResult)
+    expect(result.success?).to be(false)
+    expect(result.data).to be_nil
+    expect([ result.error_code, result.error_message ]).to eq([ code, message ])
+  end
 
+  def expect_invalid(payload)
+    expect_failure(fetch(payload), "provider_invalid_response", "Weather provider returned an invalid response")
+  end
+
+  it "returns a successful result with CurrentWeather, requested and model coordinates and valid_at in UTC" do
+    result = fetch(valid_payload)
+
+    expect(result).to be_a(CurrentWeatherResult)
+    expect(result.success?).to be(true)
+    expect([ result.error_code, result.error_message ]).to eq([ nil, nil ])
+    weather = result.data
     expect(weather).to be_a(CurrentWeather)
     expect(weather.requested_coordinates).to eq(coordinates)
     expect(weather.model_coordinates).to eq(Coordinates.new(latitude: -37.2935, longitude: -59.08487))
@@ -38,7 +55,27 @@ RSpec.describe CurrentWeatherFetcher do
   it "accepts integer values" do
     payload = valid_payload.merge("current" => valid_payload["current"].merge("temperature_2m" => 17, "wind_speed_10m" => 0))
 
-    expect(fetch(payload).temperature_celsius).to eq(17)
+    expect(fetch(payload).data.temperature_celsius).to eq(17)
+  end
+
+  describe "expected provider failures" do
+    {
+      OpenMeteo::Error::Timeout => [ "provider_timeout", "Weather provider timed out" ],
+      OpenMeteo::Error::RateLimited => [ "provider_rate_limited", "Weather provider rate limit reached" ],
+      OpenMeteo::Error::Unavailable => [ "provider_unavailable", "Weather provider unavailable" ],
+      OpenMeteo::Error::HttpError => [ "provider_error", "Weather provider returned an error" ],
+      OpenMeteo::Error::InvalidResponse => [ "provider_invalid_response", "Weather provider returned an invalid response" ]
+    }.each do |error_class, (code, message)|
+      it "turns #{error_class.name.demodulize} from the client into a failure with #{code} and its public message" do
+        expect_failure(fetch_raising(error_class.new), code, message)
+      end
+    end
+  end
+
+  describe "unexpected errors" do
+    it "lets a programming error from the client propagate instead of returning a failure" do
+      expect { fetch_raising(NoMethodError.new("bug")) }.to raise_error(NoMethodError, "bug")
+    end
   end
 
   describe "payload structure" do

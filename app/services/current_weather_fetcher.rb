@@ -1,10 +1,18 @@
 require "date"
 
-# Asks the provider client for the current weather and turns its JSON payload
-# into a CurrentWeather. Every check happens before a value is read, so a
-# malformed payload raises OpenMeteo::Error::InvalidResponse and never a
-# NoMethodError. It rescues nothing: programming errors stay visible.
+# Asks the provider client for the current weather and returns a
+# CurrentWeatherResult. Every check happens before a value is read, so a
+# malformed payload becomes a provider_invalid_response failure and never a
+# NoMethodError. Only the expected provider failures (OpenMeteo::Error) become
+# failure results; programming errors propagate and stay visible.
 class CurrentWeatherFetcher < ApplicationService
+  CODES = {
+    OpenMeteo::Error::Timeout => "provider_timeout",
+    OpenMeteo::Error::RateLimited => "provider_rate_limited",
+    OpenMeteo::Error::Unavailable => "provider_unavailable",
+    OpenMeteo::Error::HttpError => "provider_error",
+    OpenMeteo::Error::InvalidResponse => "provider_invalid_response"
+  }.freeze
   EXPECTED_UNITS = { "temperature_2m" => "°C", "wind_speed_10m" => "km/h", "time" => "iso8601" }.freeze
   TIME_FORMAT = /\A(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})\z/
 
@@ -14,7 +22,15 @@ class CurrentWeatherFetcher < ApplicationService
   end
 
   def call
-    payload = @client.current(@coordinates)
+    CurrentWeatherResult.success(weather(@client.current(@coordinates)))
+  rescue OpenMeteo::Error => e
+    # CODES.fetch: a new OpenMeteo::Error subclass without a public code fails visibly.
+    CurrentWeatherResult.failure(code: CODES.fetch(e.class), message: e.message)
+  end
+
+  private
+
+  def weather(payload)
     current, units = structure(payload)
 
     invalid! unless payload["utc_offset_seconds"] == 0
@@ -28,8 +44,6 @@ class CurrentWeatherFetcher < ApplicationService
       valid_at: utc_time(current["time"])
     )
   end
-
-  private
 
   def structure(payload)
     invalid! unless payload.is_a?(Hash)
