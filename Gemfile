@@ -45,5 +45,5 @@ end
 
 group :test do
   # Blocks real HTTP requests and stubs them in the test suite [https://github.com/bblimke/webmock]
-  gem "webmock", "~> 3.34"
+  gem "webmock", "~> 3.41"
 end
